@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+
+# ------------------------------
+# Dependencies
+
+# >> Standard lib
+from pathlib import Path
+import time
+
+# >> Third-party libs
+import duckdb
+
+# >> Internal modules
+from sandbox.expression import ExprDB
+
+
+# ------------------------------
+# Logic
+
+if __name__ == '__main__':
+    # >> Create DB instance
+    # expr_db = ExprDB.InMemory()
+    expr_db = ExprDB.AsFile()
+    expr_db.CreateExprData()
+    expr_db.CreateClusterData()
+
+    # >> Prep dataset names and locations
+    dataset_names = []
+    mtx_dirpaths  = []
+
+    #   |> E-GEOD-100618 (metacluster 12)
+    dataset_names.append('E-GEOD-100618')
+    mtx_dirpaths.append(Path('resources/sample-data/ebi'))
+
+    #   |> E-GEOD-76312 (metacluster 12)
+    dataset_names.append('E-GEOD-76312')
+    mtx_dirpaths.append(Path('resources/sample-data/ebi'))
+
+    #   |> E-GEOD-106540 (metacluster 13)
+    dataset_names.append('E-GEOD-106540')
+    mtx_dirpaths.append(Path('resources/sample-data/ebi'))
+
+    # >> Load the data and specify the meta clusters
+    for ndx, dataset_name in enumerate(dataset_names):
+        dataset_dirpath  = mtx_dirpaths[ndx] / dataset_name
+        print(f'[{dataset_dirpath}]:')
+
+        # >> First, load the expression data
+        print(f'\t[{dataset_name}]...')
+
+        tstart = time.time()
+        expr_db.LoadMTX(dataset_dirpath, dataset_name)
+        tstop = time.time()
+
+        data_excerpt = '\n\t'.join(map(str, expr_db.ScanExpr()))
+        print(f'Elapsed time: {tstop - tstart}\n\t{data_excerpt}')
+
+        # >> Then, load the cluster data
+        print(f'\tclusters...')
+
+        tstart = time.time()
+        expr_db.LoadClusters(dataset_dirpath)
+        tstop = time.time()
+
+        data_excerpt = '\n\t'.join(map(str, expr_db.ScanClusters()))
+        print(f'Elapsed time: {tstop - tstart}\n\t{data_excerpt}')
