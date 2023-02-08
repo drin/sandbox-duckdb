@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+
+# ------------------------------
+# Dependencies
+
+# >> Standard lib
+from pathlib import Path
+import time
+
+# >> Third-party libs
+import duckdb
+
+# >> Internal modules
+from sandbox.expression import ExprDB
+
+
+# ------------------------------
+# Logic
+
+if __name__ == '__main__':
+    # >> Initialize db connection to file
+    expr_db = ExprDB.AsFile()
+
+    # >> View expression excerpt
+    tstart = time.time()
+    expr_excerpt = '\n\t'.join(map(str, expr_db.ScanExpr()))
+    tstop  = time.time()
+
+    print(f'Elapsed time: {tstop - tstart}\n\t{expr_excerpt}')
+
+    # >> View clusters excerpt
+    tstart = time.time()
+    mcluster_first = '\n\t'.join(map(str, expr_db.QueryData(
+        'SELECT * FROM clusters WHERE metacluster_id = 12 LIMIT 10'
+    )))
+    mcluster_second = '\n\t'.join(map(str, expr_db.QueryData(
+        'SELECT * FROM clusters WHERE metacluster_id = 13 LIMIT 10'
+    )))
+    tstop  = time.time()
+
+    print(f'Elapsed time: {tstop - tstart}\n\t{mcluster_first}\n\t{mcluster_second}')
+
+    # >> View query results
+    tstart = time.time()
+    tstat_results = expr_db.QueryData(
+        '''
+        SELECT  COALESCE(clust_1.gene_id, clust_2.gene_id)              AS gene_id
+               ,(clust_1.cell_count + clust_2.cell_count)               AS pop_size
+               ,(clust_1.expr_avg   - clust_2.expr_avg)                 AS pop_avg
+               ,sqrt(
+                    (clust_1.expr_var / CAST(clust_1.cell_count AS DOUBLE))
+                  + (clust_2.expr_var / CAST(clust_2.cell_count AS DOUBLE))
+                )                                                       AS pop_stddev
+               ,clust_1.cell_count                                      AS left_size
+               ,clust_2.cell_count                                      AS right_size
+
+        FROM   (SELECT    gene_id
+                         ,COUNT(*)        AS cell_count
+                         ,AVG(e.expr)     AS expr_avg
+                         ,VAR_POP(e.expr) AS expr_var
+                FROM     clusters c
+                         JOIN  expr e
+                         USING (cell_id)
+                WHERE    c.metacluster_id = 12
+                GROUP BY e.gene_id
+                ) clust_1
+
+                FULL OUTER JOIN (SELECT    gene_id
+                                          ,COUNT(*)        AS cell_count
+                                          ,AVG(e.expr)     AS expr_avg
+                                          ,VAR_POP(e.expr) AS expr_var
+                                 FROM     clusters c
+                                          JOIN  expr e
+                                          USING (cell_id)
+                                 WHERE    c.metacluster_id = 13
+                                 GROUP BY e.gene_id
+                ) clust_2
+                USING (gene_id)
+
+        LIMIT 25
+        '''
+    )
+    tstop  = time.time()
+
+    print(f'Elapsed time: {tstop - tstart}')
+    print('\n'.join(map(str, [
+        (
+            f'\tGene: [{tstat_result[0]}]\n'
+            f'\t\tTotal Cells: [{tstat_result[1]} | {tstat_result[4]}, {tstat_result[5]}]\n'
+            f'\t\tt-Statistic: [{tstat_result[2] / tstat_result[3]}]\n'
+        )
+        for tstat_result in tstat_results
+    ])))
+
