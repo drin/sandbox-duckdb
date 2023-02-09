@@ -103,6 +103,11 @@ class ExprDB:
         """ Initialize an ExprDB instance as a new file-backed duckdb instance. """
         return cls(duckdb.connect(database=db_filepath, read_only=False))
 
+    @classmethod
+    def Exists(cls, db_filepath=default_dbpath):
+        """ Checks if the database at :db_filepath: exists. """
+        return Path(db_filepath).is_file()
+
     def __init__(self, db_conn, **kwargs):
         """
         Initialize the ExprDB instance given :db_conn:. It is expected that ExprDB will be
