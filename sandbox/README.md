@@ -45,7 +45,7 @@ If there are issues querying the database, be sure the database file can be foun
 default, it is named `exprdb.duckdb` and found in the `resources` directory. More
 specifically, the path defaults to [expression.ExprDB.default_dbpath][src-exprdb-dbpath],
 which can be overridden when calling [expression.ExprDB.AsFile][src-exprdb-asfile] or
-[expression.ExprDB.exists][src-exprdb-exists].
+[expression.ExprDB.Exists][src-exprdb-exists].
 
 
 <!-- Resources -->
